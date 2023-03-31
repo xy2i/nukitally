@@ -169,14 +169,11 @@ async fn nukis(
     let uid = u.id.0.to_string();
     let mut nukis = query_as!(
         NukiLog,
-        r#"select * from nuki_log where discord_uid=?"#,
+        r#"select * from nuki_log where discord_uid=? order by timestamp desc"#,
         uid
     )
     .fetch_all(&ctx.data().db)
     .await?;
-
-    nukis.sort_by_key(|k| k.timestamp);
-    nukis.reverse();
 
     let count: i64 = nukis.iter().map(|v| v.count).sum();
 
@@ -217,6 +214,76 @@ async fn nukis(
     Ok(())
 }
 
+/// Leaderboard of the greatest coomers
+#[poise::command(slash_command)]
+async fn nukiboard(ctx: Context<'_>) -> Result<(), Error> {
+    fn ordinal(i: usize) -> String {
+        match i {
+            1 => "1st".into(),
+            2 => "2nd".into(),
+            3 => "3rd".into(),
+            _ => format!("{i}st"),
+        }
+    }
+
+    let now = Utc::now().naive_utc();
+    let this_month = month_start(now);
+
+    #[derive(Debug, sqlx::FromRow)]
+    struct NukiTotal {
+        discord_uid: String,
+        count: i64,
+        last_nuki: NaiveDateTime,
+    }
+
+    let mut nukis_by_user: Vec<NukiTotal> = query_as(
+        r#"select discord_uid, sum(count) as count, (
+            select timestamp
+            from nuki_log n2
+            where discord_uid = discord_uid
+            order by timestamp desc limit 1
+            ) as last_nuki
+        from nuki_log
+        where timestamp > ?
+        group by discord_uid
+        order by count desc
+        limit 20"#,
+    )
+    .bind(this_month)
+    .fetch_all(&ctx.data().db)
+    .await?;
+
+    println!("{nukis_by_user:?}");
+
+    let mut leaderboard = String::new();
+    for (
+        i,
+        NukiTotal {
+            discord_uid,
+            count,
+            last_nuki,
+        },
+    ) in nukis_by_user.into_iter().enumerate()
+    {
+        leaderboard += &format!(
+            "**{} <@{}>:** {} nukis (last <t:{}:R>) ",
+            ordinal(i + 1),
+            discord_uid,
+            count,
+            last_nuki.timestamp()
+        );
+    }
+
+    ctx.send(|f| {
+        f.embed(|f| {
+            f.title("Coom Leaderboard, Monthly")
+                .description(leaderboard)
+        })
+    })
+    .await?;
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() {
     dotenv().ok();
@@ -242,7 +309,7 @@ async fn main() {
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
-            commands: vec![nuki(), nukis(), nback(), nundo()],
+            commands: vec![nuki(), nukis(), nback(), nundo(), nukiboard()],
             ..Default::default()
         })
         .token(env::var("DISCORD_TOKEN").expect("missing DISCORD_TOKEN"))
@@ -252,7 +319,7 @@ async fn main() {
                 poise::builtins::register_in_guild(
                     ctx,
                     &framework.options().commands,
-                    serenity::GuildId(1091304319552335892),
+                    serenity::GuildId(1090752260352520264),
                 )
                 .await?;
                 Ok(bot)
