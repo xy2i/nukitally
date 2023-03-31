@@ -266,7 +266,7 @@ async fn nukiboard(ctx: Context<'_>) -> Result<(), Error> {
     ) in nukis_by_user.into_iter().enumerate()
     {
         leaderboard += &format!(
-            "**{} <@{}>:** {} nukis (last <t:{}:R>) ",
+            "**{} <@{}>:** {} nukis (last <t:{}:R>) \n",
             ordinal(i + 1),
             discord_uid,
             count,
