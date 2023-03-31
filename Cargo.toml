@@ -1,0 +1,23 @@
+[package]
+name = "nukitally"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+dotenv = "0.15.0"
+serenity = { version = "0.11.5", features = [
+    "client",
+    "gateway",
+    "rustls_backend",
+    "model",
+], default-features = false }
+tokio = { version = "1.27.0", features = ["macros", "rt", "rt-multi-thread"] }
+sqlx = { version = "0.5.7", features = [
+    "macros",
+    "time",
+    "runtime-tokio-rustls",
+    "sqlite",
+    "offline",
+] }
