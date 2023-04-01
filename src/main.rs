@@ -145,7 +145,7 @@ async fn nundo(ctx: Context<'_>) -> Result<(), Error> {
     .execute(&ctx.data().db)
     .await?;
 
-    ctx.say("Undoed last nuki.").await?;
+    ctx.say("Undid last nuki.").await?;
 
     Ok(())
 }
@@ -214,7 +214,7 @@ async fn nukiboard(ctx: Context<'_>) -> Result<(), Error> {
             1 => "1st".into(),
             2 => "2nd".into(),
             3 => "3rd".into(),
-            _ => format!("{i}st"),
+            _ => format!("{i}th"),
         }
     }
 
