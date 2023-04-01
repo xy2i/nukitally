@@ -1,4 +1,4 @@
-use chrono::prelude::*;
+use chrono::{prelude::*, Days, Months};
 use chrono::{DateTime, Datelike, Duration, Month, NaiveDate, TimeZone, Timelike, Utc, Weekday};
 use dotenv::dotenv;
 use rand::{rngs::ThreadRng, thread_rng, Rng};
@@ -13,19 +13,11 @@ type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 
 fn week_start(dt: NaiveDateTime) -> NaiveDateTime {
-    let week = dt.iso_week().week();
-    let current_year = Utc::now().year();
-    NaiveDate::from_isoywd_opt(current_year, week, Weekday::Mon)
-        .unwrap()
-        .and_time(NaiveTime::MIN)
+    dt.checked_sub_days(Days::new(7)).unwrap()
 }
 
 fn month_start(dt: NaiveDateTime) -> NaiveDateTime {
-    let month = dt.month();
-    let current_year = Utc::now().year();
-    NaiveDate::from_ymd_opt(current_year, month, 1)
-        .unwrap()
-        .and_time(NaiveTime::MIN)
+    dt.checked_sub_months(Months::new(1)).unwrap()
 }
 
 #[derive(Debug)]
@@ -240,11 +232,11 @@ async fn nukiboard(ctx: Context<'_>) -> Result<(), Error> {
         r#"select discord_uid, sum(count) as count, (
             select timestamp
             from nuki_log n2
-            where discord_uid = discord_uid
+            where n1.discord_uid = n2.discord_uid
             order by timestamp desc limit 1
             ) as last_nuki
-        from nuki_log
-        where timestamp > ?
+        from nuki_log n1
+        where timestamp > 2020
         group by discord_uid
         order by count desc
         limit 20"#,
@@ -252,8 +244,6 @@ async fn nukiboard(ctx: Context<'_>) -> Result<(), Error> {
     .bind(this_month)
     .fetch_all(&ctx.data().db)
     .await?;
-
-    println!("{nukis_by_user:?}");
 
     let mut leaderboard = String::new();
     for (
